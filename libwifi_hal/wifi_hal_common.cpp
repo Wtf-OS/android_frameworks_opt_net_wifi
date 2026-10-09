@@ -239,7 +239,20 @@ int wifi_unload_driver() {
 #endif
 }
 
+// wcn36xx uses one firmware image for STA/AP/P2P. Detect the active
+// interface driver, so the downstream wlan firmware switch remains intact.
+static bool uses_wcn36xx() {
+  char driver[256];
+  ssize_t len = readlink("/sys/class/net/wlan0/device/driver", driver,
+                         sizeof(driver) - 1);
+  if (len <= 0 || len == sizeof(driver) - 1) return false;
+  driver[len] = '\0';
+  const char *name = strrchr(driver, '/');
+  return name != nullptr && strcmp(name + 1, "wcn36xx") == 0;
+}
+
 const char *wifi_get_fw_path(int fw_type) {
+  if (uses_wcn36xx()) return nullptr;
   switch (fw_type) {
     case WIFI_GET_FW_PATH_STA:
       return WIFI_DRIVER_FW_PATH_STA;
